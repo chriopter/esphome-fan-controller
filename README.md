@@ -17,12 +17,20 @@ Temperature-controlled fan for cooling cabinets. Inspired by [Patrick's project]
 - Fan black → GND
 
 ### Known Limitation: Reduced Max Speed
-The ESP32 outputs 3.3V PWM signals, but PC fans expect 5V PWM. This means:
-- Fan interprets 3.3V as ~66% signal
-- Max speed limited to ~750-1000 RPM instead of full speed
-- This is a hardware limitation of the fixed PCB
+The ESP32 outputs 3.3V PWM signals, but PC fans expect 5V PWM.
+- Fan limited to ~750 RPM (about 66% of max speed)
+- Usually sufficient for quiet cabinet cooling
 
-For most cabinet cooling this is sufficient. If you need 100% speed, temporarily disconnect the PWM wire (blue) - the fan will run at full speed without PWM control.
+**TODO - Fix if more speed needed:**
+Add a 4-channel I2C logic level converter (€2.89 on eBay) between GPIO20 and fan PWM:
+- Example: "3x Pegelwandler 4 Kanal I2C IIC Logic Level Converter 5V~3.3V"
+- Connections:
+  - LV (Low Voltage) → ESP 3.3V
+  - HV (High Voltage) → ESP 5V
+  - GND → Common ground
+  - LV1 → GPIO20
+  - HV1 → Fan blue PWM wire
+- Result: Fan reaches full speed (2000+ RPM instead of 750 RPM)
 
 ## How It Works
 Set target temperature. Fan adjusts speed automatically.
