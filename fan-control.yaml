@@ -158,7 +158,7 @@ output:
     id: console_fan_speed
     pin: GPIO20  # FIXED - PCB hardware pin
     frequency: "25000 Hz"  # Standard PC fan PWM frequency
-    min_power: 10%   # Most fans stall below this
+    min_power: 10%  # Fans stall below this
     max_power: 100%
     zero_means_zero: true  # Completely stop fan at 0%
 
