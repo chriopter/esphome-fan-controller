@@ -29,8 +29,13 @@ Set target temperature. Fan adjusts speed automatically.
 4. Add to Home Assistant
 
 ## Tuning
-Default values work fine. If needed:
+Default values work fine (optimized for quiet). If needed:
 - **Response Speed (P)**: How aggressive (0.3 = quiet)
 - **Drift Correction (I)**: Fixes offset (0.0015 = stable)
+
+All settings (P, I, and temperature) save to flash and survive reboots.
+
+### Auto-Tune Button
+Automatically finds "perfect" PID values by cycling the fan on/off repeatedly for ~30 minutes. Fan will be noisy during tuning and likely noisier after (optimizes for accuracy, not quiet). Only use if default values don't work for you.
 
 That's it.
