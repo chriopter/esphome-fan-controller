@@ -14,12 +14,9 @@ preferences:
   flash_write_interval: 15min
 
 
-# pid climate log update is noisy, dial it back to warn
+# Reduce log noise
 logger:
-  level: DEBUG
-  logs: 
-    climate: ERROR
-    dht: WARN
+  level: WARN
 
 # Enable Home Assistant API
 api:
@@ -45,152 +42,72 @@ captive_portal:
 
 
 number:
-  # Manual Fan Speed Percentage Control
+  # PID Tuning Parameters
+  # KP (Proportional) - How aggressively fan responds to temperature changes
   - platform: template
-    name: "Manual Fan Speed Percentage"
-    id: manual_fan_speed_percentage
-    min_value: 0
-    max_value: 100
-    step: 1
-    initial_value: 50
+    name: "Response Speed (P)"
+    id: kp
+    icon: mdi:rabbit
     restore_value: true
-    unit_of_measurement: "%"
-    icon: mdi:fan
-    optimistic: true
-    mode: slider
-
-  ## OPTIONAL:
-  # RECEIVE KP, KI and KD parameters from input_text.kx helpers in 
-  # Home Assistant. See the PID controller below
-  # These helper values will get saved to flash thus permanently over-riding 
-  # the initial values set in the PID below.
-
-  # KP
-  - platform: template
-    name: kp
-    icon: mdi:chart-bell-curve
-    restore_value: true
-    initial_value: 0.3
-    min_value: 0
-    max_value: 50
-    step: 0.001
-    optimistic: true
-    set_action: 
-      lambda: |- 
+    initial_value: 0.3  # Gentle & quiet operation
+    min_value: 0.1
+    max_value: 1.0
+    step: 0.05
+    entity_category: config
+    mode: box
+    set_action:
+      lambda: |-
         id(console_thermostat).set_kp( x );
 
-  # KI
+  # KI (Integral) - Corrects long-term temperature drift
   - platform: template
-    name: ki
-    icon: mdi:chart-bell-curve
+    name: "Drift Correction (I)"
+    id: ki
+    icon: mdi:target
     restore_value: true
-    initial_value: 0.0015
+    initial_value: 0.0015  # Slow but stable correction
     min_value: 0
-    max_value: 50
+    max_value: 0.005
     step: 0.0001
-    optimistic: true
-    set_action: 
+    entity_category: config
+    mode: box
+    set_action:
       lambda: id(console_thermostat).set_ki( x );
 
-  # KD
-  - platform: template
-    name: kd
-    icon: mdi:chart-bell-curve
-    restore_value: true
-    initial_value: 0.0
-    min_value: -50
-    max_value: 50
-    step: 0.001
-    optimistic: true
-    set_action: 
-      lambda: id(console_thermostat).set_kd( x );
+  # KD (Derivative) - Usually 0 for fan control to avoid noise
+  # Uncomment if you experience oscillation and want to experiment
+  # - platform: template
+  #   name: "Overshoot Prevention (D)"
+  #   id: kd
+  #   icon: mdi:waves
+  #   restore_value: true
+  #   initial_value: 0.0
+  #   min_value: 0
+  #   max_value: 0.1
+  #   step: 0.01
+  #   entity_category: config
+  #   set_action:
+  #     lambda: id(console_thermostat).set_kd( x );
 
-  # Set threshold low
-  - platform: template
-    name: Deadband Threshold Low
-    icon: mdi:chart-bell-curve
-    restore_value: true
-    initial_value: -1.0
-    min_value: -20
-    max_value: 0
-    step: 0.1
-    optimistic: true
-    set_action: 
-      lambda: id(console_thermostat).set_threshold_low( x );
+  # Advanced deadband settings - uncomment only if needed
+  # These are already optimized for quiet operation
+  # - platform: template
+  #   name: Deadband Threshold Low
+  #   ... (defaults: -1.0°C)
+  # - platform: template
+  #   name: Deadband Threshold High
+  #   ... (defaults: 0.4°C)
 
-  # Set threshold high
-  - platform: template
-    name: Deadband Threshold High
-    icon: mdi:chart-bell-curve
-    restore_value: true
-    initial_value: 0.4
-    min_value: 0
-    max_value: 20
-    step: 0.1
-    optimistic: true
-    set_action: 
-      lambda: id(console_thermostat).set_threshold_high( x );
-
-  # Set ki multiplier
-  - platform: template
-    name: Deadband ki Multiplier
-    icon: mdi:chart-bell-curve
-    restore_value: true
-    initial_value: 0.04
-    min_value: 0
-    max_value: .2
-    step: 0.01
-    optimistic: true
-    set_action: 
-      lambda: id(console_thermostat).set_ki_multiplier( x );
-
-text_sensor:
-
-  # Send IP Address
-  - platform: wifi_info
-    ip_address:
-      name: $friendly_name IP Address
-
-  # Send Uptime in raw seconds
-  - platform: template
-    name: $friendly_name Uptime
-    id: uptime_human
-    icon: mdi:clock-start
+# IP Address and uptime are available in ESPHome device info page
 
 sensor:
-
-  # Send WiFi signal strength & uptime to HA
+  # WiFi Signal (useful for troubleshooting)
   - platform: wifi_signal
-    name: $friendly_name WiFi Strength
+    name: WiFi Signal
     update_interval: 60s
+    entity_category: diagnostic
 
-  # This is a bit of overkill. It sends a human readable 
-  # uptime string 1h 41m 32s instead of 6092 seconds
-  - platform: uptime
-    name: $friendly_name Uptime
-    id: uptime_sensor
-    update_interval: 60s
-    on_raw_value:
-      then:
-        - text_sensor.template.publish:
-            id: uptime_human
-            # Custom C++ code to generate the result
-            state: !lambda |-
-              int seconds = round(id(uptime_sensor).raw_state);
-              int days = seconds / (24 * 3600);
-              seconds = seconds % (24 * 3600);
-              int hours = seconds / 3600;
-              seconds = seconds % 3600;
-              int minutes = seconds /  60;
-              seconds = seconds % 60;
-              return (
-                (days ? to_string(days) + "d " : "") +
-                (hours ? to_string(hours) + "h " : "") +
-                (minutes ? to_string(minutes) + "m " : "") +
-                (to_string(seconds) + "s")
-              ).c_str();
-
-  # Read the Tacho PIN and show measured RPM as a sensor (only with 4-pin PWM fans!)
+  # Fan RPM from Tachometer
   # See instructions here: https://esphome.io/components/sensor/pulse_counter.html
   - platform: pulse_counter
     pin: 
@@ -198,51 +115,14 @@ sensor:
       mode: INPUT_PULLUP
     unit_of_measurement: 'RPM'
     id: fan_speed
-    name: $friendly_name Fan Speed 1
+    name: Fan RPM
     update_interval: 1s # Set to 1 second reporting interval
     accuracy_decimals: 0
     filters:
       - multiply: 0.5  # Depending on how many pulses the fan sends per round - should be 0.5 or 1 - try...
 
 
-########################################################
-# START THE FAN CONTROLLER SETUP
-
-  - platform: template
-    name: $friendly_name p term
-    id: p_term
-    unit_of_measurement: "%"
-    accuracy_decimals: 2
-
-  - platform: template
-    name: $friendly_name i term
-    id: i_term
-    unit_of_measurement: "%"
-    accuracy_decimals: 2
-
-  - platform: template
-    name: $friendly_name d term
-    id: d_term
-    unit_of_measurement: "%"
-    accuracy_decimals: 2
-
-  - platform: template
-    name: $friendly_name output value
-    unit_of_measurement: "%"
-    id: o_term
-    accuracy_decimals: 2
-
-  - platform: template
-    name: $friendly_name error value
-    id: e_term
-    accuracy_decimals: 2
-
-  - platform: template
-    name: $friendly_name is in deadband
-    id: in_deadband_term
-    accuracy_decimals: 0
-
-  # GET TEMP/HUMIDITY FROM DHT11
+  # Temperature & Humidity Sensor
   - platform: dht
     pin: GPIO0
     model: DHT22
@@ -265,156 +145,71 @@ sensor:
     # the DHT11 can only be read every 1s. Use 1.3s to be safe.
     update_interval: 1.3s
 
-  # Every time the fan speed is updated, this sensor will
-  # also be updated for displaying on the frontend. 
-  # See proxy_output.
+  # Current fan power level (updated by proxy_output)
   - platform: template
-    name: "Fan Speed (PWM Voltage)"
+    name: "Current Fan Power"
     unit_of_measurement: "%"
     id: fan_speed_pwm_voltage
+    icon: mdi:gauge
     
 output:
-  # Wire this pin (13) into the PWM pin of your 12v fan
-  # ledc is the name of the pwm output system on an esp32
+  # PWM Fan Control (GPIO20 - FIXED, DO NOT CHANGE)
   - platform: ledc
     id: console_fan_speed
-    pin: GPIO20
-
-    # 25KHz is standard PC fan frequency, minimises buzzing
-    frequency: "25000 Hz" 
-
-    # my fans stop working below 13% powerful.
-    # also they're  powerful and loud, cap their max speed to 80%
-    min_power: 10%
+    pin: GPIO20  # FIXED - PCB hardware pin
+    frequency: "25000 Hz"  # Standard PC fan PWM frequency
+    min_power: 10%   # Most fans stall below this
     max_power: 100%
+    zero_means_zero: true  # Completely stop fan at 0%
 
-    # At 0, actually turn it off, otherwise the power keeps going.
-    zero_means_zero: true
-
-  # This proxy output takes its input
-  # if the manual fan control is on, use the manual percentage value
-  # otherwise use the PID control value.
-  # Then publish the result to the fan (ledc) and 
-  # also publish to the template output sensor
+  # PID output with deadband logic
   - platform: template
     id: proxy_output
     type: float
     write_action:
       lambda: |-
-        float write_val = 0.0;
-
-        if (id(manual_fan_control).state) {
-          // Use the specific percentage input when in manual mode
-          write_val = id(manual_fan_speed_percentage).state / 100.0;
-        } else {
-          // If we're not in the deadband, use PID output (state)
-          if (!id(console_thermostat).in_deadband()) {
-            write_val = state;
-          }
-          // Otherwise leave write_val = 0.0
-        }
-
+        // Only run fan if not in deadband (near target temp)
+        float write_val = id(console_thermostat).in_deadband() ? 0.0 : state;
         id(console_fan_speed).set_level(write_val);
         id(fan_speed_pwm_voltage).publish_state(write_val * 100.0);
 
-# If you turn this on, you can manually set the fan speed.
-# The PID will be ignored. This is done via the proxy_output.
-# The speed will be controlled by the Manual Fan Speed Percentage slider.
-fan:
-  - platform: speed
-    id: manual_fan_control
-    output: proxy_output
-    name: "Manual Fan Speed"
-    
-    # When turned on, set the fan speed to the current manual percentage value
-    on_turn_on:
-      - logger.log: "Manual fan mode activated, using manual fan speed percentage"
-
-# Expose a PID-controlled Thermostat
-# Manual: https://esphome.io/components/climate/pid.html
+# PID Temperature Controller
 climate:
   - platform: pid
-    name: "Console Fan Thermostat"
+    name: "Temperature Control"
     id: console_thermostat
     sensor: console_fan_temperature
-
-    # It is summer right now, so 30c is a decent target.
-    default_target_temperature: 30°C
+    default_target_temperature: 30°C  # Good for electronics cooling
     cool_output: proxy_output
-    # cool_output: console_fan_speed
 
-    # ON state change, publish the values to the x_term numbers defined 
-    # above, so that they can be viewed in HA
-    on_state:
-      - sensor.template.publish:
-          id: p_term
-          state: !lambda 'return -id(console_thermostat).get_proportional_term() * 100.0;'
-      - sensor.template.publish:
-          id: i_term
-          state: !lambda 'return -id(console_thermostat).get_integral_term()* 100.0;'
-      - sensor.template.publish:
-          id: d_term
-          state: !lambda 'return -id(console_thermostat).get_derivative_term()* 100.0;'
-      - sensor.template.publish:
-          id: o_term
-          state: !lambda 'return -id(console_thermostat).get_output_value()* 100.0;'
-      - sensor.template.publish:
-          id: in_deadband_term
-          state: !lambda 'return id(console_thermostat).in_deadband();'
-      - sensor.template.publish:
-          id: e_term
-          state: !lambda 'return -id(console_thermostat).get_error_value();'
-        
-    # The extents of the HA Thermostat
+    # Temperature range in Home Assistant UI
     visual:
-      min_temperature: 20 °C
-      max_temperature: 50 °C
-  
-    # See the README for setting up these parameters.
-    # These are over ridden by the number templates above.
-    control_parameters:
-      kp: 0.3
-      ki: 0.0015
-      kd: 0
-      max_integral: 0.0
-      output_averaging_samples: 1
-      derivative_averaging_samples: 5
+      min_temperature: 0°C   # Set to 0°C for "always run at 100%" mode
+      max_temperature: 45°C  # Reasonable max for electronics
 
-    # How to behave when close to the target temperature?
+    # PID Parameters (tuned for quiet operation)
+    control_parameters:
+      kp: 0.3      # Gentle response (set by Response Speed slider)
+      ki: 0.0015   # Slow drift correction (set by Drift Correction slider)
+      kd: 0        # No derivative (causes noise in fan systems)
+      max_integral: 0.0  # Prevent integral windup
+
+    # Deadband - prevents oscillation near target temp
     deadband_parameters:
-      threshold_high: 0.4°C
-      threshold_low: -1.0°C
-      kp_multiplier: 0.0
-      ki_multiplier: 0.04
-      kd_multiplier: 0.0
-      deadband_output_averaging_samples: 15
+      threshold_high: 0.4°C   # Stop fan when 0.4°C below target
+      threshold_low: -1.0°C   # Start fan when 1.0°C above target
+      ki_multiplier: 0.04     # Gentle integral in deadband
 
 switch:
-  # Expose an ESP32 restart button to HA
+  # Restart button (if needed)
   - platform: restart
-    name: ${friendly_name} ESP32 Restart
-    id: console_fan_restart
+    name: "Restart"
+    entity_category: config
 
-# Restart every day at 12:30am. 
-# I've had some memory issues lockup 
-# the device after a couple weeks
-time:
-  - platform: homeassistant
-    on_time:
-      # Every morning at 12:30am
-    - seconds: 0
-      minutes: 30
-      hours: 0
-      then:
-       - switch.turn_on: console_fan_restart
-
-
-# I was able to find good KP,KI,KD values manually, per the instructions,
-# but you can try pressing the autotune button from home assistant and copying the 
-# values it produces. 
-# See more at: https://esphome.io/components/climate/pid.html#climate-pid-autotune-action
 button:
-- platform: template
-  name: "PID Climate Autotune"
-  on_press: 
-    - climate.pid.autotune: console_thermostat
+  # Auto-tune PID (warning: optimizes for accuracy, not quiet operation)
+  - platform: template
+    name: "Auto-Tune PID"
+    entity_category: config
+    on_press:
+      - climate.pid.autotune: console_thermostat
