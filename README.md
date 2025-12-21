@@ -7,6 +7,7 @@ Temperature-controlled fan for cooling cabinets. Inspired by [Patrick's project]
 - DHT22 temperature sensor
 - 12V 4-pin PWM PC fan
 - 12V power supply
+- Logic level converter (3.3V ↔ 5V) for PWM output and tachometer input
 - Some wires
 
 ## Wiring (DO NOT CHANGE - PCB IS FIXED)
