@@ -14,31 +14,46 @@ Temperature-controlled fan for cooling cabinets. Inspired by [Patrick's project]
 ## Wiring
 
 ```
-Power:
-  USB-C 12V ──┬──────────────────────────────► Fan Red (12V)
-              │
-              ▼
-        ┌───────────┐
-        │ Step-Down │
-        │ 12V → 5V  │
-        └─────┬─────┘
-              │ 5V
-              ├──────────────────────────────► Level Converter HV
-              │
-              ▼
-          ESP32 5V
-
-Signals:
-  ESP32                Level Converter              Fan
-  3.3V  ─────────────► LV
-  GPIO20 ────────────► LV1 ────── HV1 ───────────► Blue (PWM)
-  GPIO21 ────────────► LV2 ────── HV2 ───────────► Yellow (Tach)
-
-  GPIO0 ─────────────► DHT22 DAT
-
-Ground: All GND pins connected together
-
-DHT22: VCC = 3.3V, GND = GND
+USB-C (12V Source)
+          │
+          ├──────────────────────────────┐
+          │                              │
+          ▼                              ▼
+    ┌───────────┐                  ┌───────────┐
+    │ Step-Down │                  │  12V Fan  │
+    │ 12V → 5V  │                  │           │
+    └──┬─┬──────┘                  └─┬──┬─┬──┬─┘
+       │ │                           │  │ │  │
+       │ └───────────────────────────┼──┘ │  │
+       │ 5V                          │GND │  │
+       │                             │    │  │
+       │        ┌──────────────┐     │    │  │
+       ├───────►│ HV           │     │    │  │
+       │        │              │     │    │  │
+    ┌──▼──────┐ │ Level Shift  │     │    │  │
+    │ 5V      │ │              │     │    │  │
+    │         │ │           HV1├─────┘    │  │ Blue (PWM)
+    │ ESP32   │ │   PWM 5V     │          │  │
+    │         │ │              │          │  │
+    │   GPIO20├─┼LV1           │          │  │
+    │         │ │              │          │  │
+    │   GPIO21├─┼LV2           │          │  │
+    │         │ │   Tach 5V    │          │  │
+    │         │ │           HV2├──────────┘  │ Yellow (Tach)
+    │         │ └──────────────┘             │
+    │     3.3V├──────┐                       │
+    │         │      │                       │
+    │      GND├─┐    │  ┌───────┐            │
+    │         │ │    ├─►│ LV    │            │
+    │    GPIO0├─┼──┐ │  │ GND   │◄───────────┘
+    └─────────┘ │  │ │  └───────┘
+                │  │ │
+                │  │ ▼
+                │  │┌───────┐
+                │  └┤ VCC   │
+                ├───┤ GND   │ DHT22
+                └───┤ DAT   │
+                    └───────┘
 ```
 
 | ESP32-C3 | Level Converter | Fan Wire | Description |
