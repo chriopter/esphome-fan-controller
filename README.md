@@ -16,39 +16,39 @@ Temperature-controlled fan for cooling cabinets. Inspired by [Patrick's project]
 ```
                          USB-C 12V
                              │
-              ┌──────────────┼──────────────────┐
-              │              │                  │
-              ▼              │                  ▼
-        ┌───────────┐        │             Fan Red (12V)
-        │ Step-Down │        │
-        │ 12V → 5V  │        │
-        └─────┬─────┘        │
-              │ 5V           │
-              ├──────────────┼─────────┐
-              │              │         │
-              ▼              ▼         ▼
-         ESP32-C3      Level Converter         4-Pin Fan
-        ┌─────────┐   ┌───────────────┐      ┌─────────┐
-        │      5V ┼───┤               │      │  Black ─┼─ GND
-        │    3.3V ┼───┼─ LV      HV ──┼──────┼─ Red    │  12V
-        │     GND ┼───┼─ GND    GND ─┼──────┼─ (GND)  │
-        │  GPIO20 ┼───┼─ LV1    HV1 ─┼──────┼─ Blue   │  PWM
-        │  GPIO21 ┼───┼─ LV2    HV2 ─┼──────┼─ Yellow │  Tach
-        │         │   └───────────────┘      └─────────┘
+              ┌──────────────┴──────────────────┐
+              │                                 │
+              ▼                                 ▼
+        ┌───────────┐                      Fan Red (12V)
+        │ Step-Down │
+        │ 12V → 5V  │
+        └─────┬─────┘
+              │ 5V
+              ├───────────────────────┐
+              │                       │
+              ▼                       ▼
+         ESP32-C3              Level Converter            4-Pin Fan
+        ┌─────────┐           ┌───────────────┐         ┌──────────┐
+        │      5V ┼───────────┼─ HV ←─────────┘         │  Black   │  GND
+        │    3.3V ┼───────────┼─ LV                     │    Red   │  12V
+        │     GND │  GND      │ GND            GND ─────┼─  (GND)  │
+        │  GPIO20 ┼───────────┼─ LV1     HV1 ───────────┼─  Blue   │  PWM
+        │  GPIO21 ┼───────────┼─ LV2     HV2 ───────────┼─  Yellow │  Tach
+        │         │           └───────────────┘         └──────────┘
         │   GPIO0 ┼──┐
         └─────────┘  │
-                     │       DHT22
-                     │      ┌──────┐
-                     └──────┼─ DAT │
-              3.3V ─────────┼─ VCC │
-               GND ─────────┼─ GND │
-                            └──────┘
+                     │          DHT22
+                     │         ┌──────┐
+                     └─────────┼─ DAT │
+                       3.3V ───┼─ VCC │
+                       GND     │ GND  │
+                               └──────┘
 ```
 
 | ESP32-C3 | Level Converter | Fan Wire | Description |
 |----------|-----------------|----------|-------------|
 | 3.3V     | LV              | -        | Low voltage reference |
-| -        | HV              | 12V      | High voltage reference |
+| 5V       | HV              | -        | High voltage reference (from step-down) |
 | GND      | GND             | Black    | Common ground |
 | GPIO20   | LV1 → HV1       | Blue     | PWM speed control |
 | GPIO21   | LV2 → HV2       | Yellow   | Tachometer RPM signal |
