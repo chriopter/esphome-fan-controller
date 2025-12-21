@@ -6,32 +6,41 @@ Temperature-controlled fan for cooling cabinets. Inspired by [Patrick's project]
 - ESP32-C3-DevKitM-1
 - DHT22 temperature sensor
 - 12V 4-pin PWM PC fan
-- 12V power supply
+- USB-C power supply (12V)
 - Logic level converter (3.3V ↔ 5V) for PWM output and tachometer input
 - Some wires
 
-## Wiring (DO NOT CHANGE - PCB IS FIXED)
-- GPIO0 → DHT22 data
-- GPIO20 → Fan PWM (blue wire)
-- GPIO21 → Fan tachometer (yellow wire)
-- Fan red → 12V
-- Fan black → GND
+## Wiring
 
-### Known Limitation: Reduced Max Speed
-The ESP32 outputs 3.3V PWM signals, but PC fans expect 5V PWM.
-- Fan limited to ~750 RPM (about 66% of max speed)
-- Usually sufficient for quiet cabinet cooling
+```
+                    Logic Level Converter
+                    ┌─────────────────┐
+  ESP32-C3          │  LV        HV   │         4-Pin Fan
+ ┌─────────┐        │                 │        ┌─────────┐
+ │         │        │                 │        │  Black ─┼── GND
+ │    3.3V ┼────────┼─ LV        HV  ─┼────────┼─ Red    │   12V
+ │     GND ┼────────┼─ GND      GND ─┼────────┼─ (GND)  │
+ │  GPIO20 ┼────────┼─ LV1      HV1 ─┼────────┼─ Blue   │   PWM
+ │  GPIO21 ┼────────┼─ LV2      HV2 ─┼────────┼─ Yellow │   Tach
+ │         │        │                 │        └─────────┘
+ │   GPIO0 ┼──┐     └─────────────────┘
+ └─────────┘  │
+              │      DHT22
+              │     ┌──────┐
+              └─────┼─ DAT │
+           3.3V ────┼─ VCC │
+            GND ────┼─ GND │
+                    └──────┘
+```
 
-**TODO - Fix if more speed needed:**
-Add a 4-channel I2C logic level converter (€2.89 on eBay) between GPIO20 and fan PWM:
-- Example: "3x Pegelwandler 4 Kanal I2C IIC Logic Level Converter 5V~3.3V"
-- Connections:
-  - LV (Low Voltage) → ESP 3.3V
-  - HV (High Voltage) → ESP 5V
-  - GND → Common ground
-  - LV1 → GPIO20
-  - HV1 → Fan blue PWM wire
-- Result: Fan reaches full speed (2000+ RPM instead of 750 RPM)
+| ESP32-C3 | Level Converter | Fan Wire | Description |
+|----------|-----------------|----------|-------------|
+| 3.3V     | LV              | -        | Low voltage reference |
+| -        | HV              | 12V      | High voltage reference |
+| GND      | GND             | Black    | Common ground |
+| GPIO20   | LV1 → HV1       | Blue     | PWM speed control |
+| GPIO21   | LV2 → HV2       | Yellow   | Tachometer RPM signal |
+| GPIO0    | -               | -        | DHT22 data pin |
 
 ## How It Works
 Set target temperature. Fan adjusts speed automatically.
