@@ -7,23 +7,33 @@ Temperature-controlled fan for cooling cabinets. Inspired by [Patrick's project]
 - DHT22 temperature sensor
 - 12V 4-pin PWM PC fan
 - USB-C power supply (12V)
+- DC step-down converter (12V → 5V) for ESP32
 - Logic level converter (3.3V ↔ 5V) for PWM output and tachometer input
 - Some wires
 
 ## Wiring
 
 ```
-                    Logic Level Converter
-                    ┌─────────────────┐
-  ESP32-C3          │  LV        HV   │         4-Pin Fan
- ┌─────────┐        │                 │        ┌─────────┐
- │         │        │                 │        │  Black ─┼── GND
+ USB-C 12V
+     │
+     ├────────────────────────────────────────────┐
+     │                                            │
+     ▼                                            ▼
+ ┌────────────┐                              Fan Red (12V)
+ │  Step-Down │
+ │  12V → 5V  │
+ └─────┬──────┘
+       │ 5V
+       ▼
+  ESP32-C3          Logic Level Converter         4-Pin Fan
+ ┌─────────┐        ┌─────────────────┐        ┌─────────┐
+ │      5V ┼← ──────┤                 │        │  Black ─┼── GND
  │    3.3V ┼────────┼─ LV        HV  ─┼────────┼─ Red    │   12V
  │     GND ┼────────┼─ GND      GND ─┼────────┼─ (GND)  │
  │  GPIO20 ┼────────┼─ LV1      HV1 ─┼────────┼─ Blue   │   PWM
  │  GPIO21 ┼────────┼─ LV2      HV2 ─┼────────┼─ Yellow │   Tach
- │         │        │                 │        └─────────┘
- │   GPIO0 ┼──┐     └─────────────────┘
+ │         │        └─────────────────┘        └─────────┘
+ │   GPIO0 ┼──┐
  └─────────┘  │
               │      DHT22
               │     ┌──────┐
