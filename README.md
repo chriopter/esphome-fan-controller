@@ -6,7 +6,8 @@ Temperature-controlled fan for cooling cabinets. Inspired by [Patrick's project]
 - ESP32-C3-DevKitM-1
 - DHT22 temperature sensor
 - 12V 4-pin PWM PC fan
-- USB-C power supply (12V)
+- USB-C PD power supply (12V capable)
+- USB-C PD trigger module (set to 12V output)
 - DC step-down converter (12V → 5V) for ESP32
 - Logic level converter (3.3V ↔ 5V) for PWM output and tachometer input
 - Some wires
