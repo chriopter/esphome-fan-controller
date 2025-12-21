@@ -14,47 +14,92 @@ Temperature-controlled fan for cooling cabinets. Inspired by [Patrick's project]
 
 ## Wiring
 
-```
-USB-C (12V Source)
-          │
-          ├──────────────────────────────┐
-          │                              │
-          ▼                              ▼
-    ┌───────────┐                  ┌───────────┐
-    │ Step-Down │                  │  12V Fan  │
-    │ 12V → 5V  │                  │           │
-    └──┬─┬──────┘                  └─┬──┬─┬──┬─┘
-       │ │                           │  │ │  │
-       │ └───────────────────────────┼──┘ │  │
-       │ 5V                          │GND │  │
-       │                             │    │  │
-       │        ┌──────────────┐     │    │  │
-       ├───────►│ HV           │     │    │  │
-       │        │              │     │    │  │
-    ┌──▼──────┐ │ Level Shift  │     │    │  │
-    │ 5V      │ │              │     │    │  │
-    │         │ │           HV1├─────┘    │  │ Blue (PWM)
-    │ ESP32   │ │   PWM 5V     │          │  │
-    │         │ │              │          │  │
-    │   GPIO20├─┼LV1           │          │  │
-    │         │ │              │          │  │
-    │   GPIO21├─┼LV2           │          │  │
-    │         │ │   Tach 5V    │          │  │
-    │         │ │           HV2├──────────┘  │ Yellow (Tach)
-    │         │ └──────────────┘             │
-    │     3.3V├──────┐                       │
-    │         │      │                       │
-    │      GND├─┐    │  ┌───────┐            │
-    │         │ │    ├─►│ LV    │            │
-    │    GPIO0├─┼──┐ │  │ GND   │◄───────────┘
-    └─────────┘ │  │ │  └───────┘
-                │  │ │
-                │  │ ▼
-                │  │┌───────┐
-                │  └┤ VCC   │
-                ├───┤ GND   │ DHT22
-                └───┤ DAT   │
-                    └───────┘
+```mermaid
+graph TD
+    %% Define styles for clearer visualization
+    classDef power_hv fill:#f9f,stroke:#333,stroke-width:2px,color:black;
+    classDef power_lv fill:#ff9,stroke:#333,stroke-width:2px,color:black;
+    classDef ground fill:#eee,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5;
+    classDef component fill:#fff,stroke:#333,stroke-width:2px;
+
+    %% --- Power Source ---
+    subgraph Power_Supply [Power Source]
+        USBC[USB-C PD Charger] ==>|USB Cable| TRIGGER[PD Trigger Module<br/>Set to: 12V Output]
+    end
+
+    %% --- Voltage Regulation ---
+    TRIGGER ==>|12V V+| BUCK[Step-Down Converter<br/>12V → 5V]
+
+    %% --- Main Controller ---
+    subgraph ESP32 [ESP32-C3]
+        ESP_5V[5V Pin]
+        ESP_3V3[3.3V Pin]
+        ESP_GND[GND Pin]
+        GPIO20[GPIO20<br/>PWM Out]
+        GPIO21[GPIO21<br/>Tach In]
+        GPIO0[GPIO0<br/>Data]
+    end
+
+    %% --- Logic Level Converter ---
+    subgraph LLC [Level Shifter]
+        HV_REF[HV Ref 5V]
+        LV_REF[LV Ref 3.3V]
+        LLC_GND[GND]
+
+        LV1_IN[LV1] --> HV1_OUT[HV1]
+        HV2_IN[HV2] --> LV2_OUT[LV2]
+    end
+
+    %% --- Peripherals ---
+    subgraph FAN [12V 4-Pin Fan]
+        FAN_RED[Red Wire<br/>12V]
+        FAN_BLK[Black Wire<br/>GND]
+        FAN_BLUE[Blue Wire<br/>PWM Signal]
+        FAN_YELL[Yellow Wire<br/>Tach Signal]
+    end
+
+    subgraph SENSOR [DHT22 Sensor]
+        DHT_VCC[VCC Pin]
+        DHT_GND[GND Pin]
+        DHT_DAT[DATA Pin]
+    end
+
+    %% --- Common Ground Node ---
+    COM_GND((COMMON<br/>GROUND)):::ground
+
+    %% ================= WIRING CONNECTIONS =================
+
+    %% --- Positive Power Rails (Thick Lines) ---
+    TRIGGER ==>|12V Major| FAN_RED
+    BUCK ==>|5V| ESP_5V
+    BUCK ==>|5V| HV_REF
+    ESP_3V3 ==>|3.3V| LV_REF
+    ESP_3V3 ==>|3.3V| DHT_VCC
+
+    %% --- Signal Paths (Standard Lines) ---
+    %% PWM Path (ESP -> Fan)
+    GPIO20 --> LV1_IN
+    HV1_OUT -->|PWM 5V| FAN_BLUE
+
+    %% Tach Path (Fan -> ESP)
+    FAN_YELL -->|Tach 5V| HV2_IN
+    LV2_OUT -->|Tach 3.3V| GPIO21
+
+    %% Sensor Path (Bidirectional)
+    GPIO0 <--> DHT_DAT
+
+    %% --- Ground Connections (Dotted Lines) ---
+    TRIGGER -.->|GND| COM_GND
+    BUCK -.->|GND| COM_GND
+    ESP_GND -.-> COM_GND
+    LLC_GND -.-> COM_GND
+    FAN_BLK -.-> COM_GND
+    DHT_GND -.-> COM_GND
+
+    %% Apply styles to power nodes for visual clarity
+    class TRIGGER,FAN_RED power_hv;
+    class BUCK,ESP_5V,HV_REF,ESP_3V3,LV_REF,DHT_VCC power_lv;
+    class USBC,ESP32,LLC,FAN,SENSOR component;
 ```
 
 | ESP32-C3 | Level Converter | Fan Wire | Description |
